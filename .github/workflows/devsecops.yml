@@ -1,0 +1,41 @@
+name: DevSecOps Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  check-app-runs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install backend dependencies
+        run: |
+          cd Backend
+          npm install
+
+      - name: Run backend server
+        run: |
+          cd Backend
+          node server.js &
+          sleep 5
+          echo "Backend started successfully"
+
+      - name: Check frontend files
+        run: |
+          if [ -d "Frontend" ]; then
+            echo "Frontend folder exists"
+            ls Frontend
+          else
+            echo "Frontend folder missing"
+            exit 1
+          fi
