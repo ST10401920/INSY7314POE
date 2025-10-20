@@ -3,6 +3,7 @@ import { checkAuth, authorizeRole  } from "../auth/checkAuth.js"; //middleware t
 import { client } from "../db/db.js";
 import Joi from "joi"; //Input validation to prevent injection attacks
 import rateLimit from "express-rate-limit"; // mitigating brute force attacks / DoS attacks
+import { ObjectId } from "mongodb";
 
 const router = express.Router();
 const db = client.db("INSY7314-Task2-DB");
@@ -64,5 +65,31 @@ router.get("/transactions", checkAuth , authorizeRole(["employee"]), async (req,
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
+router.patch(
+  "/transactions/:id/approve",
+  checkAuth,
+  authorizeRole(["employee"]),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const result = await collection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { status: "APPROVED", approvedAt: new Date() } }
+      );
+
+      if (result.matchedCount === 0) {
+        return res.status(404).json({ message: "Transaction not found" });
+      }
+
+      res.status(200).json({ message: "Transaction approved successfully" });
+    } catch (err) {
+      console.error("Approval error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+);
+
 
 export default router;

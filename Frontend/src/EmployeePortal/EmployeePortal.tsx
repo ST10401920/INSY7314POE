@@ -1,135 +1,187 @@
+import { useEffect, useState } from "react";
 import { Navigation } from "../components/navigation";
 import { Footer } from "../components/footer";
 import { Button } from "../components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../components/ui/table";
-import { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import {Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 
-// Mock data for pending payments
-const pendingPayments = [
-  {
-    id: 1,
-    senderAccount: "123456789",
-    recipientAccount: "987654321",
-    recipientName: "John Smith",
-    bankName: "Chase Bank",
-    amount: 5000,
-    currency: "USD",
-    swiftCode: "CHASUS33",
-    status: "pending",
-    verified: false,
-  },
-  {
-    id: 2,
-    senderAccount: "456789123",
-    recipientAccount: "321654987",
-    recipientName: "Maria Garcia",
-    bankName: "Deutsche Bank",
-    amount: 3500,
-    currency: "EUR",
-    swiftCode: "DEUTDEFF",
-    status: "pending",
-    verified: false,
-  },
-  {
-    id: 3,
-    senderAccount: "789123456",
-    recipientAccount: "654987321",
-    recipientName: "James Wilson",
-    bankName: "Barclays",
-    amount: 7500,
-    currency: "GBP",
-    swiftCode: "BARCGB22",
-    status: "pending",
-    verified: false,
-  },
-];
+const Dialog = ({ open, onOpenChange, children }: any) => {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div
+        className="absolute inset-0 bg-black/50"
+        onClick={() => onOpenChange?.(false)}
+      />
+      <div className="relative z-10">{children}</div>
+    </div>
+  );
+};
+
+const DialogContent = ({ children }: any) => (
+  <div className="bg-white rounded-lg p-6 w-full max-w-lg shadow-lg">
+    {children}
+  </div>
+);
+
+const DialogHeader = ({ children }: any) => <div className="mb-4">{children}</div>;
+
+const DialogTitle = ({ children }: any) => (
+  <h3 className="text-lg font-medium">{children}</h3>
+);
+
+const DialogDescription = ({ children }: any) => (
+  <p className="text-sm text-muted-foreground">{children}</p>
+);
+
+const DialogFooter = ({ children }: any) => (
+  <div className="mt-4 flex justify-end gap-2">{children}</div>
+);
+
+interface Transaction {
+  _id: string;
+  customerAccount: string;
+  payeeAccount: string;
+  recipientName: string;
+  amount: number;
+  currency: string;
+  swiftCode: string;
+  status: string;
+  createdAt: string;
+}
 
 export default function EmployeePortal() {
-  const [payments, setPayments] = useState(pendingPayments);
-  const [selectedPayments, setSelectedPayments] = useState<number[]>([]);
+  const [payments, setPayments] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [selectedPayment, setSelectedPayment] = useState<Transaction | null>(
+    null
+  );
+  const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
 
-  const handleVerify = (paymentId: number) => {
-    setPayments(
-      payments.map((payment) =>
-        payment.id === paymentId ? { ...payment, verified: true } : payment
-      )
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const response = await fetch("https://localhost:5400/transactions", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch transactions");
+        }
+
+        const data: Transaction[] = await response.json();
+        setPayments(data);
+      } catch (err) {
+        setError("Failed to load transactions");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTransactions();
+  }, []);
+
+  const handleVerify = (payment: Transaction) => {
+    const swiftRegex = /^[A-Z0-9]{8,11}$/;
+    if (!swiftRegex.test(payment.swiftCode)) {
+      alert("Invalid SWIFT code format.");
+      return;
+    }
+
+    setTimeout(() => {
+      setSelectedPayment(payment);
+      setVerifyDialogOpen(true);
+    }, 400);
+  };
+
+  const handleApprove = async () => {
+    if (!selectedPayment) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `https://localhost:5400/transactions/${selectedPayment._id}/approve`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to approve transaction");
+      }
+
+      setPayments((prev) =>
+        prev.map((p) =>
+          p._id === selectedPayment._id
+            ? { ...p, status: "APPROVED" }
+            : p
+        )
+      );
+
+      setApproveDialogOpen(false);
+    } catch (err) {
+      console.error(err);
+      alert("Error approving transaction");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen text-lg">
+        Loading transactions...
+      </div>
     );
-    setSelectedPayments([...selectedPayments, paymentId]);
-  };
+  }
 
-  const handleUnverify = (paymentId: number) => {
-    setPayments(
-      payments.map((payment) =>
-        payment.id === paymentId ? { ...payment, verified: false } : payment
-      )
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen text-red-500">
+        {error}
+      </div>
     );
-    setSelectedPayments(selectedPayments.filter((id) => id !== paymentId));
-  };
-
-  const handleSubmitToSwift = () => {
-    const verifiedPayments = payments.filter((payment) =>
-      selectedPayments.includes(payment.id)
-    );
-    console.log("Submitting to SWIFT:", verifiedPayments);
-    // Add actual SWIFT submission logic here
-  };
-
-  // Function to validate SWIFT code format
-  const isValidSwiftCode = (code: string) => {
-    // SWIFT code format: 4 letters (bank code) + 2 letters (country code) + 2 characters (location code) + optional 3 characters (branch code)
-    const swiftFormat = /^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$/;
-    return swiftFormat.test(code);
-  };
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
       <Navigation />
+
       <main className="flex-1 container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Card>
           <CardHeader>
-            <CardTitle>SWIFT Payment Verification Dashboard</CardTitle>
+            <CardTitle>Employee Transaction Dashboard</CardTitle>
             <CardDescription>
-              Verify account information and SWIFT codes before submission
+              Verify and approve pending SWIFT transactions
             </CardDescription>
           </CardHeader>
+
           <CardContent>
             <Table>
-              <TableCaption>
-                Transactions Pending SWIFT Verification
-              </TableCaption>
+              <TableCaption>All Customer Transactions</TableCaption>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Sender Account</TableHead>
-                  <TableHead>Recipient Account</TableHead>
+                  <TableHead>Customer Account</TableHead>
+                  <TableHead>Payee Account</TableHead>
+                  <TableHead>Recipient</TableHead>
                   <TableHead>Amount</TableHead>
                   <TableHead>Currency</TableHead>
                   <TableHead>SWIFT Code</TableHead>
-                  <TableHead>Verification</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Action</TableHead>
                 </TableRow>
               </TableHeader>
+
               <TableBody>
                 {payments.map((payment) => (
-                  <TableRow
-                    key={payment.id}
-                    className={payment.verified ? "bg-green-50" : undefined}
-                  >
-                    <TableCell>{payment.senderAccount}</TableCell>
-                    <TableCell>{payment.recipientAccount}</TableCell>
+                  <TableRow key={payment._id}>
+                    <TableCell>{payment.customerAccount}</TableCell>
+                    <TableCell>{payment.payeeAccount}</TableCell>
+                    <TableCell>{payment.recipientName}</TableCell>
                     <TableCell>
                       {payment.amount.toLocaleString(undefined, {
                         minimumFractionDigits: 2,
@@ -138,45 +190,91 @@ export default function EmployeePortal() {
                     </TableCell>
                     <TableCell>{payment.currency}</TableCell>
                     <TableCell>{payment.swiftCode}</TableCell>
+                    <TableCell>{payment.status}</TableCell>
                     <TableCell>
-                      {payment.verified ? (
+                      {payment.status === "PENDING" ? (
                         <Button
                           size="sm"
-                          variant="outline"
-                          className="w-full"
-                          onClick={() => handleUnverify(payment.id)}
+                          className="bg-[#ddb892] hover:bg-[#ddb892]/90 text-white"
+                          onClick={() => handleVerify(payment)}
                         >
-                          Verified ✓
+                          Verify SWIFT
                         </Button>
                       ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="w-full"
-                          onClick={() => handleVerify(payment.id)}
-                        >
-                          Verify
-                        </Button>
+                        <span className="text-green-600 font-medium">
+                          Approved ✓
+                        </span>
                       )}
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-
-            <div className="mt-6 flex justify-end">
-              <Button
-                className="bg-[#ddb892] hover:bg-[#ddb892]/90 text-white"
-                disabled={selectedPayments.length === 0}
-                onClick={handleSubmitToSwift}
-              >
-                Submit Verified Payments to SWIFT
-              </Button>
-            </div>
           </CardContent>
         </Card>
       </main>
+
       <Footer />
+
+      <Dialog open={verifyDialogOpen} onOpenChange={setVerifyDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Verify SWIFT Code</DialogTitle>
+            <DialogDescription>
+              SWIFT Code: <strong>{selectedPayment?.swiftCode}</strong> <br />
+              Please confirm that this SWIFT code is valid and corresponds to
+              the intended recipient bank. Once verified, you can proceed to
+              approve the transaction.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              onClick={() => setVerifyDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="bg-[#ddb892] hover:bg-[#ddb892]/90 text-white"
+              onClick={() => {
+                setVerifyDialogOpen(false);
+                setApproveDialogOpen(true);
+              }}
+            >
+              Proceed to Approve
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Final Confirmation</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to <strong>approve</strong> this
+              transaction? <br />
+              <span className="text-red-600 font-medium">
+                This action cannot be undone.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              onClick={() => setApproveDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="bg-green-600 hover:bg-green-700 text-white"
+              onClick={handleApprove}
+            >
+              Confirm Approve
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
