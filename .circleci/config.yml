@@ -35,23 +35,32 @@ jobs:
           name: Backend API smoke test
           command: |
             cd Backend
-            node scripts/smoke-test.js || true
+            if [ -f scripts/smoke-test.js ]; then
+              node scripts/smoke-test.js || true
+            else
+              echo "No smoke-test.js found, skipping API test"
+            fi
 
       # Static Application Security Testing (SAST) - SonarCloud scan using local CLI
       - run:
-          name: SonarCloud Scan using local CLI
+          name: SonarCloud Scan
           command: |
             # Install SonarScanner CLI locally
             npm install -g sonar-scanner@4.8.0.2856
             chmod +x $(which sonar-scanner)
 
-            # Run Sonar scan
+            # If coverage files exist, set them; otherwise skip
+            LCOV_PATHS=""
+            [ -f Frontend/coverage/lcov.info ] && LCOV_PATHS="Frontend/coverage/lcov.info"
+            [ -f Backend/coverage/lcov.info ] && LCOV_PATHS="$LCOV_PATHS,Backend/coverage/lcov.info"
+
             sonar-scanner \
               -Dsonar.login=$SONAR_TOKEN \
               -Dsonar.projectBaseDir=. \
               -Dsonar.sources=Frontend,Backend \
               -Dsonar.host.url=https://sonarcloud.io \
               -Dsonar.sourceEncoding=UTF-8 \
+              ${LCOV_PATHS:+-Dsonar.javascript.lcov.reportPaths=$LCOV_PATHS} \
               -Dsonar.verbose=true
 
 workflows:
