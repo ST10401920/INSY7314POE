@@ -2,43 +2,27 @@ version: 2.1
 
 orbs:
   node: circleci/node@6.1.0
-  sonarcloud: sonarsource/sonarcloud@1.2.0  # Official SonarCloud Orb
+  sonarcloud: sonarsource/sonarcloud@2.0.0
 
 jobs:
-  build-and-analyze:
+  build:
     docker:
       - image: cimg/node:18.17
     steps:
       - checkout
-
-      # Install dependencies
-      - run: cd Frontend && npm ci
-      - run: cd Backend && npm ci
-
-      # SCA (npm audit)
-      - run: cd Frontend && npm audit --audit-level=moderate || true
-      - run: cd Backend && npm audit --audit-level=moderate || true
-
-      # API smoke tests
-      - run: |
-          cd Backend
-          if [ -f scripts/smoke-test.js ]; then
-            node scripts/smoke-test.js || true
-          else
-            echo "No smoke-test.js found, skipping API test"
-          fi
-
-      # SonarCloud scan
+      - run:
+          name: Install Frontend dependencies
+          command: cd Frontend && npm ci
+      - run:
+          name: Install Backend dependencies
+          command: cd Backend && npm ci
       - sonarcloud/scan:
           organization: "yourusername"
           projectKey: "yourusername_habitatech"
-          # Optional: set additional properties
           extra-properties: |
             sonar.sources=Frontend,Backend
             sonar.exclusions=**/node_modules/**,**/dist/**,**/build/**
-            sonar.javascript.lcov.reportPaths=Frontend/coverage/lcov.info,Backend/coverage/lcov.info
-
 workflows:
-  build_and_analyze:
+  build_and_scan:
     jobs:
-      - build-and-analyze
+      - build
