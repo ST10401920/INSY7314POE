@@ -10,39 +10,48 @@ jobs:
     steps:
       - checkout
 
-      # Install dependencies
+      # Install Frontend dependencies
       - run:
           name: Install Frontend dependencies
           command: cd Frontend && npm ci
+
+      # Install Backend dependencies
       - run:
           name: Install Backend dependencies
           command: cd Backend && npm ci
 
-      # Static Application Security Testing (SAST)
-      - run:
-          name: SonarCloud Scan
-          command: |
-            npx sonar-scanner \
-              -Dsonar.login=$SONAR_TOKEN \
-              -Dsonar.projectBaseDir=. \
-              -Dsonar.sources=Frontend,Backend \
-              -Dsonar.host.url=https://sonarcloud.io \
-              -Dsonar.sourceEncoding=UTF-8
-
-      # Software Composition Analysis (SCA)
+      # Software Composition Analysis (SCA) - Frontend
       - run:
           name: Frontend npm audit
           command: cd Frontend && npm audit --audit-level=moderate
+
+      # Software Composition Analysis (SCA) - Backend
       - run:
           name: Backend npm audit
           command: cd Backend && npm audit --audit-level=moderate
 
-      # API testing (smoke test)
+      # API testing (basic smoke test)
       - run:
           name: Backend API smoke test
           command: |
             cd Backend
             node scripts/smoke-test.js || true
+
+      # Static Application Security Testing (SAST) - SonarCloud scan
+      - run:
+          name: SonarCloud Scan using official CLI
+          command: |
+            SC_VER=4.8.0.2856
+            curl -sSL -o /tmp/sonar-scanner.zip \
+              https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-$SC_VER-linux.zip
+            unzip -q /tmp/sonar-scanner.zip -d /tmp
+            export PATH="/tmp/sonar-scanner-$SC_VER/bin:$PATH"
+            sonar-scanner \
+              -Dsonar.login=$SONAR_TOKEN \
+              -Dsonar.projectBaseDir=. \
+              -Dsonar.sources=Frontend,Backend \
+              -Dsonar.host.url=https://sonarcloud.io \
+              -Dsonar.sourceEncoding=UTF-8
 
 workflows:
   build_and_analyze:
