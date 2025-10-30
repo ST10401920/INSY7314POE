@@ -10,27 +10,32 @@ jobs:
     steps:
       - checkout
 
-      # Install Frontend dependencies
+      # --------------------------
+      # 1️⃣ Install dependencies
+      # --------------------------
+
       - run:
           name: Install Frontend dependencies
           command: cd Frontend && npm ci
 
-      # Install Backend dependencies
       - run:
           name: Install Backend dependencies
           command: cd Backend && npm ci
 
-      # Software Composition Analysis (SCA) - Frontend
+      # --------------------------
+      # 2️⃣ Software Composition Analysis (SCA)
+      # --------------------------
       - run:
           name: Frontend npm audit
           command: cd Frontend && npm audit --audit-level=moderate || true
 
-      # Software Composition Analysis (SCA) - Backend
       - run:
           name: Backend npm audit
           command: cd Backend && npm audit --audit-level=moderate || true
 
-      # API testing (basic smoke test)
+      # --------------------------
+      # 3️⃣ API smoke tests
+      # --------------------------
       - run:
           name: Backend API smoke test
           command: |
@@ -41,7 +46,9 @@ jobs:
               echo "No smoke-test.js found, skipping API test"
             fi
 
-      # Static Application Security Testing (SAST) - SonarCloud scan using official CLI
+      # --------------------------
+      # 4️⃣ SonarCloud SAST scan
+      # --------------------------
       - run:
           name: SonarCloud Scan
           command: |
@@ -53,21 +60,22 @@ jobs:
             SONAR_DIR=$(unzip -Z -1 $SC_ZIP | head -1 | cut -d/ -f1)
             chmod +x /tmp/$SONAR_DIR/bin/sonar-scanner
 
-            # Set LCOV paths only if coverage files exist
+            # LCOV coverage files (optional)
             LCOV_PATHS=""
             [ -f Frontend/coverage/lcov.info ] && LCOV_PATHS="Frontend/coverage/lcov.info"
             [ -f Backend/coverage/lcov.info ] && LCOV_PATHS="$LCOV_PATHS,Backend/coverage/lcov.info"
 
-            # Run Sonar scan in quiet mode to prevent SIGPIPE (exit 141)
+            # Run scanner in quiet mode to prevent SIGPIPE (exit 141)
             /tmp/$SONAR_DIR/bin/sonar-scanner \
               -Dsonar.login=$SONAR_TOKEN \
-              -Dsonar.projectBaseDir=. \
+              -Dsonar.projectKey=yourusername_habitatech \
+              -Dsonar.organization=yourusername \
               -Dsonar.sources=Frontend,Backend \
               -Dsonar.host.url=https://sonarcloud.io \
               -Dsonar.sourceEncoding=UTF-8 \
               ${LCOV_PATHS:+-Dsonar.javascript.lcov.reportPaths=$LCOV_PATHS} \
               -Dsonar.verbosity=quiet \
-              || true  # Prevent SIGPIPE from failing the job
+              || true
 
 workflows:
   build_and_analyze:
