@@ -1,21 +1,28 @@
 version: 2.1
 
+orbs:
+  node: circleci/node@5.0.0
+
 jobs:
-  build:
+  build-and-analyze:
     docker:
-      - image: '********** CHANGE ME 1 **********'
+      - image: cimg/node:18.16
     steps:
       - checkout
+      - node/install-packages
       - run:
-          name: Install dependencies and build project
-          command: ********** CHANGE ME 2 **********
-      - sonarcloud/scan
-
-orbs:
-  sonarcloud: sonarsource/sonarcloud@2.0.0
+          name: Run SonarCloud Scan
+          command: |
+            npm install -g sonar-scanner
+            sonar-scanner \
+              -Dsonar.projectKey=$SONAR_PROJECT_KEY \
+              -Dsonar.organization=$SONAR_ORG \
+              -Dsonar.sources=. \
+              -Dsonar.host.url=https://sonarcloud.io \
+              -Dsonar.login=$SONAR_TOKEN
 
 workflows:
+  version: 2
   main:
     jobs:
-      - build:
-          context: SonarCloud
+      - build-and-analyze
