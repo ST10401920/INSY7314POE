@@ -2,6 +2,7 @@ version: 2.1
 
 orbs:
   node: circleci/node@6.1.0
+  sonarcloud: sonarsource/sonarcloud@1.2.0  # Official SonarCloud Orb
 
 jobs:
   build-and-analyze:
@@ -10,72 +11,32 @@ jobs:
     steps:
       - checkout
 
-      # --------------------------
-      # 1️⃣ Install dependencies
-      # --------------------------
+      # Install dependencies
+      - run: cd Frontend && npm ci
+      - run: cd Backend && npm ci
 
-      - run:
-          name: Install Frontend dependencies
-          command: cd Frontend && npm ci
+      # SCA (npm audit)
+      - run: cd Frontend && npm audit --audit-level=moderate || true
+      - run: cd Backend && npm audit --audit-level=moderate || true
 
-      - run:
-          name: Install Backend dependencies
-          command: cd Backend && npm ci
+      # API smoke tests
+      - run: |
+          cd Backend
+          if [ -f scripts/smoke-test.js ]; then
+            node scripts/smoke-test.js || true
+          else
+            echo "No smoke-test.js found, skipping API test"
+          fi
 
-      # --------------------------
-      # 2️⃣ Software Composition Analysis (SCA)
-      # --------------------------
-      - run:
-          name: Frontend npm audit
-          command: cd Frontend && npm audit --audit-level=moderate || true
-
-      - run:
-          name: Backend npm audit
-          command: cd Backend && npm audit --audit-level=moderate || true
-
-      # --------------------------
-      # 3️⃣ API smoke tests
-      # --------------------------
-      - run:
-          name: Backend API smoke test
-          command: |
-            cd Backend
-            if [ -f scripts/smoke-test.js ]; then
-              node scripts/smoke-test.js || true
-            else
-              echo "No smoke-test.js found, skipping API test"
-            fi
-
-      # --------------------------
-      # 4️⃣ SonarCloud SAST scan
-      # --------------------------
-      - run:
-          name: SonarCloud Scan
-          command: |
-            # Download official SonarScanner CLI
-            SC_VER=4.8.0.2856
-            SC_ZIP=/tmp/sonar-scanner.zip
-            curl -sSL -o $SC_ZIP https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-$SC_VER-linux.zip
-            unzip -q $SC_ZIP -d /tmp
-            SONAR_DIR=$(unzip -Z -1 $SC_ZIP | head -1 | cut -d/ -f1)
-            chmod +x /tmp/$SONAR_DIR/bin/sonar-scanner
-
-            # LCOV coverage files (optional)
-            LCOV_PATHS=""
-            [ -f Frontend/coverage/lcov.info ] && LCOV_PATHS="Frontend/coverage/lcov.info"
-            [ -f Backend/coverage/lcov.info ] && LCOV_PATHS="$LCOV_PATHS,Backend/coverage/lcov.info"
-
-            # Run scanner in quiet mode to prevent SIGPIPE (exit 141)
-            /tmp/$SONAR_DIR/bin/sonar-scanner \
-              -Dsonar.login=$SONAR_TOKEN \
-              -Dsonar.projectKey=yourusername_habitatech \
-              -Dsonar.organization=yourusername \
-              -Dsonar.sources=Frontend,Backend \
-              -Dsonar.host.url=https://sonarcloud.io \
-              -Dsonar.sourceEncoding=UTF-8 \
-              ${LCOV_PATHS:+-Dsonar.javascript.lcov.reportPaths=$LCOV_PATHS} \
-              -Dsonar.verbosity=quiet \
-              || true
+      # SonarCloud scan
+      - sonarcloud/scan:
+          organization: "yourusername"
+          projectKey: "yourusername_habitatech"
+          # Optional: set additional properties
+          extra-properties: |
+            sonar.sources=Frontend,Backend
+            sonar.exclusions=**/node_modules/**,**/dist/**,**/build/**
+            sonar.javascript.lcov.reportPaths=Frontend/coverage/lcov.info,Backend/coverage/lcov.info
 
 workflows:
   build_and_analyze:
