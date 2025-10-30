@@ -23,12 +23,12 @@ jobs:
       # Software Composition Analysis (SCA) - Frontend
       - run:
           name: Frontend npm audit
-          command: cd Frontend && npm audit --audit-level=high || true
+          command: cd Frontend && npm audit --audit-level=moderate || true
 
       # Software Composition Analysis (SCA) - Backend
       - run:
           name: Backend npm audit
-          command: cd Backend && npm audit --audit-level=high || true
+          command: cd Backend && npm audit --audit-level=moderate || true
 
       # API testing (basic smoke test)
       - run:
@@ -44,7 +44,10 @@ jobs:
             SC_VER=4.8.0.2856
             curl -sSL -o /tmp/sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-$SC_VER-linux.zip
             unzip -q /tmp/sonar-scanner.zip -d /tmp
-            /tmp/sonar-scanner-$SC_VER/bin/sonar-scanner \
+            # Detect the exact folder dynamically
+            SONAR_DIR=$(unzip -Z -1 /tmp/sonar-scanner.zip | head -1 | cut -d/ -f1)
+            echo "Using SonarScanner folder: $SONAR_DIR"
+            /tmp/$SONAR_DIR/bin/sonar-scanner \
               -Dsonar.login=$SONAR_TOKEN \
               -Dsonar.projectBaseDir=. \
               -Dsonar.sources=Frontend,Backend \
