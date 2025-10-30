@@ -9,17 +9,26 @@ jobs:
       - image: cimg/node:18.16
     steps:
       - checkout
-      - node/install-packages
       - run:
-          name: Run SonarCloud Scan
+          name: Install Sonar Scanner
+          command: npm install -g sonar-scanner
+
+      - run:
+          name: Install Dependencies (Frontend + Backend)
           command: |
-            npm install -g sonar-scanner
+            cd Frontend && npm ci && cd ..
+            cd Backend && npm ci && cd ..
+
+      - run:
+          name: Run SonarCloud Scan (Frontend + Backend)
+          command: |
             sonar-scanner \
               -Dsonar.projectKey=$SONAR_PROJECT_KEY \
               -Dsonar.organization=$SONAR_ORG \
-              -Dsonar.sources=. \
               -Dsonar.host.url=https://sonarcloud.io \
-              -Dsonar.login=$SONAR_TOKEN
+              -Dsonar.login=$SONAR_TOKEN \
+              -Dsonar.sources=Frontend,Backend \
+              -Dsonar.sourceEncoding=UTF-8
 
 workflows:
   version: 2
