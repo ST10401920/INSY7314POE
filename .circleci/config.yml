@@ -37,22 +37,22 @@ jobs:
             cd Backend
             node scripts/smoke-test.js || true
 
-      # Static Application Security Testing (SAST) - SonarCloud scan using CLI
+      # Static Application Security Testing (SAST) - SonarCloud scan using local CLI
       - run:
-          name: SonarCloud Scan
+          name: SonarCloud Scan using local CLI
           command: |
-            SC_VER=4.8.0.2856
-            curl -sSL -o /tmp/sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-$SC_VER-linux.zip
-            unzip -q /tmp/sonar-scanner.zip -d /tmp
-            # Detect the folder dynamically
-            SONAR_DIR=$(unzip -Z -1 /tmp/sonar-scanner.zip | head -1 | cut -d/ -f1)
-            chmod +x /tmp/$SONAR_DIR/bin/sonar-scanner
-            /tmp/$SONAR_DIR/bin/sonar-scanner \
+            # Install SonarScanner CLI locally
+            npm install -g sonar-scanner@4.8.0.2856
+            chmod +x $(which sonar-scanner)
+
+            # Run Sonar scan
+            sonar-scanner \
               -Dsonar.login=$SONAR_TOKEN \
               -Dsonar.projectBaseDir=. \
               -Dsonar.sources=Frontend,Backend \
               -Dsonar.host.url=https://sonarcloud.io \
-              -Dsonar.sourceEncoding=UTF-8
+              -Dsonar.sourceEncoding=UTF-8 \
+              -Dsonar.verbose=true
 
 workflows:
   build_and_analyze:
