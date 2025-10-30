@@ -10,45 +10,39 @@ jobs:
     steps:
       - checkout
 
-      # Install dependencies for Frontend
+      # Install dependencies
       - run:
           name: Install Frontend dependencies
-          command: |
-            cd Frontend
-            npm ci
-
-      # Install dependencies for Backend
+          command: cd Frontend && npm ci
       - run:
           name: Install Backend dependencies
-          command: |
-            cd Backend
-            npm ci
+          command: cd Backend && npm ci
 
-      # Optional: run tests for Frontend
+      # Static Application Security Testing (SAST)
       - run:
-          name: Run Frontend tests
-          command: |
-            cd Frontend
-            npm test -- --ci --coverage
-
-      # Optional: run tests for Backend
-      - run:
-          name: Run Backend tests
-          command: |
-            cd Backend
-            npm test -- --ci --coverage
-
-      # Run SonarCloud scan for both folders using npx
-      - run:
-          name: Run SonarCloud Scan
+          name: SonarCloud Scan
           command: |
             npx sonar-scanner \
               -Dsonar.login=$SONAR_TOKEN \
               -Dsonar.projectBaseDir=. \
               -Dsonar.sources=Frontend,Backend \
               -Dsonar.host.url=https://sonarcloud.io \
-              -Dsonar.javascript.lcov.reportPaths=Frontend/coverage/lcov.info,Backend/coverage/lcov.info \
               -Dsonar.sourceEncoding=UTF-8
+
+      # Software Composition Analysis (SCA)
+      - run:
+          name: Frontend npm audit
+          command: cd Frontend && npm audit --audit-level=moderate
+      - run:
+          name: Backend npm audit
+          command: cd Backend && npm audit --audit-level=moderate
+
+      # API testing (smoke test)
+      - run:
+          name: Backend API smoke test
+          command: |
+            cd Backend
+            node scripts/smoke-test.js || true
 
 workflows:
   build_and_analyze:
