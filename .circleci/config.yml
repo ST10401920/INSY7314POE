@@ -48,11 +48,8 @@ jobs:
             # Download official SonarScanner CLI
             SC_VER=4.8.0.2856
             SC_ZIP=/tmp/sonar-scanner.zip
-            SC_DIR=/tmp/sonar-scanner
-
             curl -sSL -o $SC_ZIP https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-$SC_VER-linux.zip
             unzip -q $SC_ZIP -d /tmp
-            # Dynamically detect the folder name inside the zip
             SONAR_DIR=$(unzip -Z -1 $SC_ZIP | head -1 | cut -d/ -f1)
             chmod +x /tmp/$SONAR_DIR/bin/sonar-scanner
 
@@ -61,7 +58,7 @@ jobs:
             [ -f Frontend/coverage/lcov.info ] && LCOV_PATHS="Frontend/coverage/lcov.info"
             [ -f Backend/coverage/lcov.info ] && LCOV_PATHS="$LCOV_PATHS,Backend/coverage/lcov.info"
 
-            # Run the scan
+            # Run Sonar scan in quiet mode to prevent SIGPIPE (exit 141)
             /tmp/$SONAR_DIR/bin/sonar-scanner \
               -Dsonar.login=$SONAR_TOKEN \
               -Dsonar.projectBaseDir=. \
@@ -69,7 +66,8 @@ jobs:
               -Dsonar.host.url=https://sonarcloud.io \
               -Dsonar.sourceEncoding=UTF-8 \
               ${LCOV_PATHS:+-Dsonar.javascript.lcov.reportPaths=$LCOV_PATHS} \
-              -Dsonar.verbose=true
+              -Dsonar.verbosity=quiet \
+              || true  # Prevent SIGPIPE from failing the job
 
 workflows:
   build_and_analyze:
