@@ -41,20 +41,28 @@ jobs:
               echo "No smoke-test.js found, skipping API test"
             fi
 
-      # Static Application Security Testing (SAST) - SonarCloud scan using local CLI
+      # Static Application Security Testing (SAST) - SonarCloud scan using official CLI
       - run:
           name: SonarCloud Scan
           command: |
-            # Install SonarScanner CLI locally
-            npm install -g sonar-scanner@4.8.0.2856
-            chmod +x $(which sonar-scanner)
+            # Download official SonarScanner CLI
+            SC_VER=4.8.0.2856
+            SC_ZIP=/tmp/sonar-scanner.zip
+            SC_DIR=/tmp/sonar-scanner
 
-            # If coverage files exist, set them; otherwise skip
+            curl -sSL -o $SC_ZIP https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-$SC_VER-linux.zip
+            unzip -q $SC_ZIP -d /tmp
+            # Dynamically detect the folder name inside the zip
+            SONAR_DIR=$(unzip -Z -1 $SC_ZIP | head -1 | cut -d/ -f1)
+            chmod +x /tmp/$SONAR_DIR/bin/sonar-scanner
+
+            # Set LCOV paths only if coverage files exist
             LCOV_PATHS=""
             [ -f Frontend/coverage/lcov.info ] && LCOV_PATHS="Frontend/coverage/lcov.info"
             [ -f Backend/coverage/lcov.info ] && LCOV_PATHS="$LCOV_PATHS,Backend/coverage/lcov.info"
 
-            sonar-scanner \
+            # Run the scan
+            /tmp/$SONAR_DIR/bin/sonar-scanner \
               -Dsonar.login=$SONAR_TOKEN \
               -Dsonar.projectBaseDir=. \
               -Dsonar.sources=Frontend,Backend \
