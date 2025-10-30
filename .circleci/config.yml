@@ -23,12 +23,12 @@ jobs:
       # Software Composition Analysis (SCA) - Frontend
       - run:
           name: Frontend npm audit
-          command: cd Frontend && npm audit --audit-level=moderate
+          command: cd Frontend && npm audit --audit-level=high
 
       # Software Composition Analysis (SCA) - Backend
       - run:
           name: Backend npm audit
-          command: cd Backend && npm audit --audit-level=moderate
+          command: cd Backend && npm audit --audit-level=high
 
       # API testing (basic smoke test)
       - run:
