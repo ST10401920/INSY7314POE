@@ -1,5 +1,3 @@
-import fetch from 'node-fetch';
-
 async function main() {
   try {
     const res = await fetch('http://localhost:5400/health'); // adjust endpoint
