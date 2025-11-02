@@ -7,63 +7,53 @@ jobs:
     steps:
       - checkout
 
-      # --------------------------
       # 1️⃣ Install dependencies
-      # --------------------------
       - run:
           name: Install Frontend dependencies
           command: cd Frontend && npm ci
-
       - run:
           name: Install Backend dependencies
           command: cd Backend && npm ci
 
-      # --------------------------
-      # 2️⃣ Software Composition Analysis (SCA)
-      # --------------------------
+      # 2️⃣ Software Composition Analysis (dependency vulnerabilities)
       - run:
           name: Frontend npm audit
           command: cd Frontend && npm audit --audit-level=moderate || true
-
       - run:
           name: Backend npm audit
           command: cd Backend && npm audit --audit-level=moderate || true
 
-      # --------------------------
-      # 3️⃣ API smoke tests
-      # --------------------------
+      # 3️⃣ Basic API test (optional, runs if test file exists)
       - run:
           name: Backend API smoke test
           command: |
             cd Backend
             if [ -f scripts/smoke-test.js ]; then
+              echo "Running API smoke test..."
               node scripts/smoke-test.js || true
             else
-              echo "No smoke-test.js found, skipping API test"
+              echo "No API test found, skipping."
             fi
 
-      # --------------------------
-      # 4️⃣ SonarCloud Scan (simplified CLI)
-      # --------------------------
+      # 4️⃣ Run SonarCloud Scan using official CLI
       - run:
-          name: SonarCloud Scan
+          name: Run SonarCloud Scan
           command: |
-            npm install -g @sonarsource/sonar-scanner-cli || true
+            echo "Downloading and running Sonar Scanner CLI..."
+            export SONAR_SCANNER_VERSION=5.0.1.3006
+            export SONAR_SCANNER_HOME=$HOME/.sonar/sonar-scanner-$SONAR_SCANNER_VERSION-linux
+            mkdir -p $HOME/.sonar
+            curl -sSLo $HOME/.sonar/sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-$SONAR_SCANNER_VERSION-linux.zip
+            unzip -q -o $HOME/.sonar/sonar-scanner.zip -d $HOME/.sonar/
+            export PATH=$SONAR_SCANNER_HOME/bin:$PATH
             sonar-scanner \
               -Dsonar.login=$SONAR_TOKEN \
-              -Dsonar.projectKey=yourusername_habitatech \
-              -Dsonar.organization=yourusername \
-              -Dsonar.sources=Frontend,Backend \
-              -Dsonar.host.url=https://sonarcloud.io \
-              -Dsonar.sourceEncoding=UTF-8 \
-              -Dsonar.verbosity=quiet \
-              2>&1 | cat
+              -Dsonar.projectBaseDir=. \
+              -Dsonar.working.directory=.sonar \
+              -Dsonar.verbose=true || true
 
-# --------------------------
-# Workflow to run the job
-# --------------------------
 workflows:
   version: 2
-  build_and_analyze:
+  build_and_scan:
     jobs:
       - build-and-analyze
