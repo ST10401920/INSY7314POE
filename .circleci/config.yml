@@ -23,19 +23,28 @@ jobs:
           name: Backend npm audit
           command: cd Backend && npm audit --audit-level=moderate || true
 
-      # Basic API test 
+      # Start Backend for API smoke test
+      - run:
+          name: Start Backend Server
+          command: |
+            cd Backend
+            echo "Starting backend server in background..."
+            node server.js &
+            sleep 5  # wait for server to be ready
+
+      # API smoke test
       - run:
           name: Backend API smoke test
           command: |
             cd Backend
             if [ -f scripts/smoke-test.js ]; then
               echo "Running API smoke test..."
-              node scripts/smoke-test.js || true
+              node scripts/smoke-test.js
             else
               echo "No API test found, skipping."
             fi
 
-      # Run SonarCloud Scan 
+      # SonarCloud Scan
       - run:
           name: Run SonarCloud Scan
           command: |
@@ -50,7 +59,7 @@ jobs:
               -Dsonar.login=$SONAR_TOKEN \
               -Dsonar.projectBaseDir=. \
               -Dsonar.working.directory=.sonar \
-              -Dsonar.verbose=true || true
+              -Dsonar.verbose=true
 
 workflows:
   version: 2
