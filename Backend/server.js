@@ -11,6 +11,10 @@ import staff from "./auth/staff.js";
 const app = express();
 app.use(express.json());
 
+app.get("/health", (req, res) => {
+  res.status(200).send("OK");
+});
+
 // https://expressjs.com/en/advanced/best-practice-security.html
 // Protects against common web vulnerabilities
 app.use(helmet());
