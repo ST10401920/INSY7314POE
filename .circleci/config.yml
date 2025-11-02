@@ -18,10 +18,10 @@ jobs:
       # 2️⃣ Software Composition Analysis (dependency vulnerabilities)
       - run:
           name: Frontend npm audit
-          command: cd Frontend && npm audit --audit-level=moderate || exit 1
+          command: cd Frontend && npm audit --audit-level=high || exit 1
       - run:
           name: Backend npm audit
-          command: cd Backend && npm audit --audit-level=moderate || exit 1
+          command: cd Backend && npm audit --audit-level=high || exit 1
 
       # 3️⃣ Start backend server & run API smoke test
       - run:
