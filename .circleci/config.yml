@@ -7,7 +7,7 @@ jobs:
     steps:
       - checkout
 
-      # 1️⃣ Install dependencies
+      # Install dependencies
       - run:
           name: Install Frontend dependencies
           command: cd Frontend && npm ci
@@ -15,7 +15,7 @@ jobs:
           name: Install Backend dependencies
           command: cd Backend && npm ci
 
-      # 2️⃣ Software Composition Analysis (dependency vulnerabilities)
+      # Software Composition Analysis (dependency vulnerabilities)
       - run:
           name: Frontend npm audit
           command: cd Frontend && npm audit --audit-level=moderate || true
@@ -23,7 +23,7 @@ jobs:
           name: Backend npm audit
           command: cd Backend && npm audit --audit-level=moderate || true
 
-      # 3️⃣ Basic API test (optional, runs if test file exists)
+      # Basic API test 
       - run:
           name: Backend API smoke test
           command: |
@@ -35,7 +35,7 @@ jobs:
               echo "No API test found, skipping."
             fi
 
-      # 4️⃣ Run SonarCloud Scan using official CLI
+      # Run SonarCloud Scan 
       - run:
           name: Run SonarCloud Scan
           command: |
