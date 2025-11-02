@@ -13,35 +13,39 @@ jobs:
       - run:
           name: Install Frontend dependencies
           command: cd Frontend && npm ci
-
       - run:
           name: Install Backend dependencies
           command: cd Backend && npm ci
 
       # --------------------------
-      # 2️⃣ Software Composition Analysis (dependency vulnerabilities)
+      # 2️⃣ Software Composition Analysis
       # --------------------------
       - run:
           name: Frontend npm audit
           command: cd Frontend && npm audit --audit-level=moderate || true
-
       - run:
           name: Backend npm audit
           command: cd Backend && npm audit --audit-level=moderate || true
 
       # --------------------------
-      # 3️⃣ Start backend server
+      # 3️⃣ Start backend server for smoke testing
       # --------------------------
       - run:
           name: Start Backend Server
           command: |
             cd Backend
-            nohup node server.js &    # Run in background
-            echo "Waiting for server to start..."
-            sleep 5                   # Wait a few seconds
+            nohup node server.js &
+            echo "Waiting for server to be ready..."
+            for i in {1..15}; do
+              if nc -z localhost 5400; then
+                echo "Server is up"
+                break
+              fi
+              sleep 1
+            done
 
       # --------------------------
-      # 4️⃣ Basic API smoke test (Node 18 built-in fetch)
+      # 4️⃣ Basic API smoke test
       # --------------------------
       - run:
           name: Backend API smoke test
@@ -51,7 +55,7 @@ jobs:
               echo "Running API smoke test..."
               node scripts/smoke-test.js
             else
-              echo "No API test found, skipping."
+              echo "No smoke-test.js found, skipping."
             fi
 
       # --------------------------
