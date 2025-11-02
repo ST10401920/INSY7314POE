@@ -41,7 +41,7 @@ jobs:
             sleep 5                   # Wait a few seconds
 
       # --------------------------
-      # 4️⃣ Basic API smoke test
+      # 4️⃣ Basic API smoke test (Node 18 built-in fetch)
       # --------------------------
       - run:
           name: Backend API smoke test
