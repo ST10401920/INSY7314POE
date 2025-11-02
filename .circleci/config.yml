@@ -7,7 +7,9 @@ jobs:
     steps:
       - checkout
 
-      # Install dependencies
+      # --------------------------
+      # 1️⃣ Install dependencies
+      # --------------------------
       - run:
           name: Install Frontend dependencies
           command: cd Frontend && npm ci
@@ -15,7 +17,16 @@ jobs:
           name: Install Backend dependencies
           command: cd Backend && npm ci
 
-      # Software Composition Analysis (dependency vulnerabilities)
+      # --------------------------
+      # 1a️⃣ Install node-fetch for smoke test
+      # --------------------------
+      - run:
+          name: Install node-fetch
+          command: cd Backend && npm install node-fetch@3
+
+      # --------------------------
+      # 2️⃣ Software Composition Analysis (dependency vulnerabilities)
+      # --------------------------
       - run:
           name: Frontend npm audit
           command: cd Frontend && npm audit --audit-level=moderate || true
@@ -23,7 +34,9 @@ jobs:
           name: Backend npm audit
           command: cd Backend && npm audit --audit-level=moderate || true
 
-      # Start Backend for API smoke test
+      # --------------------------
+      # 3️⃣ Start Backend for API smoke test
+      # --------------------------
       - run:
           name: Start Backend Server
           command: |
@@ -32,7 +45,9 @@ jobs:
             node server.js &
             sleep 5  # wait for server to be ready
 
-      # API smoke test
+      # --------------------------
+      # 4️⃣ API smoke test
+      # --------------------------
       - run:
           name: Backend API smoke test
           command: |
@@ -44,7 +59,9 @@ jobs:
               echo "No API test found, skipping."
             fi
 
-      # SonarCloud Scan
+      # --------------------------
+      # 5️⃣ Run SonarCloud Scan
+      # --------------------------
       - run:
           name: Run SonarCloud Scan
           command: |
