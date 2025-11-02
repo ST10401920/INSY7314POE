@@ -18,7 +18,7 @@ jobs:
           command: cd Backend && npm ci
 
       # --------------------------
-      # 2️⃣ Software Composition Analysis
+      # 2️⃣ Software Composition Analysis (dependency vulnerabilities)
       # --------------------------
       - run:
           name: Frontend npm audit
@@ -34,11 +34,12 @@ jobs:
           name: Start Backend Server
           command: |
             cd Backend
-            nohup node server.js &
-            echo "Waiting for server to be ready..."
+            echo "Starting server in background..."
+            nohup node server.js > server.log 2>&1 &
+            echo "Waiting for server to start..."
             for i in {1..15}; do
               if nc -z localhost 5400; then
-                echo "Server is up"
+                echo "Server is up!"
                 break
               fi
               sleep 1
@@ -55,11 +56,11 @@ jobs:
               echo "Running API smoke test..."
               node scripts/smoke-test.js
             else
-              echo "No smoke-test.js found, skipping."
+              echo "No API test found, skipping."
             fi
 
       # --------------------------
-      # 5️⃣ Run SonarCloud Scan
+      # 5️⃣ Run SonarCloud Scan using official CLI
       # --------------------------
       - run:
           name: Run SonarCloud Scan
