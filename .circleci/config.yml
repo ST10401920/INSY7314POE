@@ -28,11 +28,16 @@ jobs:
           name: Backend API smoke test
           command: |
             cd Backend
-            echo "Starting backend server..."
-            nohup node server.js > server.log 2>&1 &
+            npm ci
+            # Start server in background
+            node server.js &
+            SERVER_PID=$!
+            # Wait a few seconds for server to start
             sleep 5
-            echo "Running smoke test..."
+            # Run smoke test
             node scripts/smoke-test.js
+            # Kill server after tests
+            kill $SERVER_PID
 
       # 4️⃣ Run SonarCloud Scan using official CLI
       - run:
