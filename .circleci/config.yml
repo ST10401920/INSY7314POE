@@ -15,6 +15,11 @@ jobs:
           name: Install Backend dependencies
           command: cd Backend && npm ci
 
+      # Install node-fetch for smoke test
+      - run:
+          name: Install node-fetch for smoke test
+          command: cd Backend && npm install node-fetch@3
+
       # Software Composition Analysis (dependency vulnerabilities)
       - run:
           name: Frontend npm audit
@@ -30,7 +35,7 @@ jobs:
             cd Backend
             if [ -f scripts/smoke-test.js ]; then
               echo "Running API smoke test..."
-              node scripts/smoke-test.js || true
+              node scripts/smoke-test.js
             else
               echo "No API test found, skipping."
             fi
@@ -50,7 +55,7 @@ jobs:
               -Dsonar.login=$SONAR_TOKEN \
               -Dsonar.projectBaseDir=. \
               -Dsonar.working.directory=.sonar \
-              -Dsonar.verbose=true || true
+              -Dsonar.verbose=true
 
 workflows:
   version: 2
