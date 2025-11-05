@@ -3,7 +3,7 @@ version: 2.1
 jobs:
   build-and-analyze:
     docker:
-      - image: cimg/node:18.17
+      - image: cimg/node:18.18
     working_directory: ~/repo
     steps:
       - checkout
