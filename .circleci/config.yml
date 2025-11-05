@@ -15,6 +15,20 @@ jobs:
           name: Install Backend dependencies
           command: cd Backend && npm ci
 
+      # Static Application Security Testing (SAST)
+      - run:
+          name: Backend ESLint Security Scan
+          command: |
+            cd Backend
+            npm install --save-dev eslint eslint-plugin-security
+            npx eslint "**/*.js" --plugin security || true
+      - run:
+          name: Frontend ESLint Security Scan
+          command: |
+            cd Frontend
+            npm install --save-dev eslint eslint-plugin-security
+            npx eslint "**/*.js" --plugin security || true
+
       # Software Composition Analysis (dependency vulnerabilities)
       - run:
           name: Frontend npm audit
@@ -23,13 +37,12 @@ jobs:
           name: Backend npm audit
           command: cd Backend && npm audit --audit-level=high || exit 1
 
-      # Simple API smoke test
+      # Simple API smoke test (mock server)
       - run:
           name: Backend API smoke test
           command: |
             cd Backend
-            # Install node-fetch for smoke test
-            npm install node-fetch@3
+            npm install node-fetch@3 nyc --save-dev
             # Create a mock server for smoke test
             echo "import express from 'express';
             const app = express();
@@ -47,7 +60,8 @@ jobs:
                 process.exit(1);
               }
             });" > scripts/temp-smoke-test.js
-            node scripts/temp-smoke-test.js
+            # Run smoke test with coverage
+            npx nyc --reporter=lcov node scripts/temp-smoke-test.js
 
       # Run SonarCloud Scan
       - run:
