@@ -1,12 +1,12 @@
 // Backend/scripts/smoke-test.js
 console.log("Running smoke test...");
 
-// Simple test to ensure server starts (optional)
-const fetch = require("node-fetch");
-
 async function test() {
   try {
-    // Example: test a local endpoint
+    // Dynamically import node-fetch
+    const fetch = (await import('node-fetch')).default;
+
+    // Example endpoint test
     const res = await fetch("http://localhost:3000/health");
     if (res.ok) {
       console.log("API is responding correctly!");
