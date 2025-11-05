@@ -3,7 +3,7 @@ version: 2.1
 jobs:
   build-and-analyze:
     docker:
-      - image: cimg/node:18.17
+      - image: cimg/node:18.18  # upgraded to remove ESLint EBADENGINE warnings
     steps:
       - checkout
 
@@ -43,6 +43,7 @@ jobs:
           command: |
             cd Backend
             npm install node-fetch@3 nyc --save-dev
+            mkdir -p scripts  # create folder to avoid "No such file or directory"
             # Create a mock server for smoke test
             echo "import express from 'express';
             const app = express();
@@ -78,6 +79,8 @@ jobs:
               -Dsonar.login=$SONAR_TOKEN \
               -Dsonar.projectBaseDir=. \
               -Dsonar.working.directory=.sonar \
+              -Dsonar.javascript.lcov.reportPaths=Backend/coverage/lcov.info,Frontend/coverage/lcov.info \
+              -Dsonar.exclusions=Backend/scripts/temp-smoke-test.js,Frontend/scripts/* \
               -Dsonar.verbose=true
 
 workflows:
