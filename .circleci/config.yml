@@ -37,40 +37,39 @@ jobs:
           name: Backend npm audit
           command: cd Backend && npm audit --audit-level=high || exit 1
 
-      # Simple API smoke test (mock server)
+      # Simple API smoke test (mock server) using CommonJS
       - run:
           name: Backend API Smoke Test
           command: |
             cd Backend
-            npm install node-fetch@3 --save-dev
-            mkdir -p scripts
-            # Create mock server file
-            echo "import express from 'express';
-            const app = express();
-            app.get('/health', (req,res)=>res.status(200).send('OK'));
-            const server = app.listen(5400, async ()=> {
-              console.log('Mock server running on port 5400');
-              const fetch = (await import('node-fetch')).default;
-              const res = await fetch('http://localhost:5400/health');
-              if(res.status === 200) {
-                console.log('API OK');
-                server.close();
-              } else {
-                console.error('API failed', res.status);
-                server.close();
-                process.exit(1);
-              }
-            });" > scripts/temp-smoke-test.js
-            node scripts/temp-smoke-test.js
+            npm install node-fetch@3 jest supertest --save-dev
+            mkdir -p scripts tests
+            # Create mock server + Jest test file
+            echo "const express = require('express');
+            const fetch = require('node-fetch');
 
-      # Run Jest tests for coverage (uses mock server for /health)
+            let server;
+
+            beforeAll(() => {
+              const app = express();
+              app.get('/health', (req, res) => res.status(200).send('OK'));
+              server = app.listen(5400);
+            });
+
+            afterAll(() => {
+              server.close();
+            });
+
+            test('Mock server /health endpoint returns 200', async () => {
+              const res = await fetch('http://localhost:5400/health');
+              expect(res.status).toBe(200);
+            });" > tests/health.test.js
+
+      # Run Jest tests + coverage
       - run:
           name: Backend Jest + Coverage
           command: |
             cd Backend
-            npm install jest supertest --save-dev
-            mkdir -p tests
-            # Run Jest tests (collects coverage for SonarCloud)
             npx jest --coverage
 
       # Run SonarCloud Scan
