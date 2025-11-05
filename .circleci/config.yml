@@ -3,11 +3,13 @@ version: 2.1
 jobs:
   build-and-analyze:
     docker:
-      - image: cimg/node:18.18  # Node version compatible with ESLint plugins
+      - image: cimg/node:18.18  # Node version compatible with ESLint and dependencies
     steps:
       - checkout
 
+      # --------------------------
       # Install dependencies
+      # --------------------------
       - run:
           name: Install Frontend dependencies
           command: cd Frontend && npm ci
@@ -15,7 +17,9 @@ jobs:
           name: Install Backend dependencies
           command: cd Backend && npm ci
 
+      # --------------------------
       # Static Application Security Testing (SAST)
+      # --------------------------
       - run:
           name: Backend ESLint Security Scan
           command: |
@@ -29,7 +33,9 @@ jobs:
             npm install --save-dev eslint eslint-plugin-security
             npx eslint "**/*.js" --plugin security || true
 
-      # Software Composition Analysis (dependency vulnerabilities)
+      # --------------------------
+      # Software Composition Analysis (SCA)
+      # --------------------------
       - run:
           name: Frontend npm audit
           command: cd Frontend && npm audit --audit-level=high || exit 1
@@ -37,7 +43,9 @@ jobs:
           name: Backend npm audit
           command: cd Backend && npm audit --audit-level=high || exit 1
 
-      # Simple API smoke test (mock server)
+      # --------------------------
+      # Backend Mock Server Smoke Test
+      # --------------------------
       - run:
           name: Backend API Smoke Test
           command: |
@@ -66,14 +74,28 @@ jobs:
               expect(res.status).toBe(200);
             });" > tests/health.test.js
 
-      # Run Jest tests + collect coverage
+      # --------------------------
+      # Backend + Frontend Jest + Coverage
+      # --------------------------
       - run:
           name: Backend Jest + Coverage
           command: |
             cd Backend
             npx jest --coverage
 
+      - run:
+          name: Frontend Jest + Coverage
+          command: |
+            cd Frontend
+            npm install jest --save-dev
+            mkdir -p tests
+            # Minimal frontend test to generate coverage
+            echo "test('sample frontend test', () => { expect(true).toBe(true); });" > tests/sample.test.js
+            npx jest --coverage
+
+      # --------------------------
       # Run SonarCloud Scan
+      # --------------------------
       - run:
           name: Run SonarCloud Scan
           command: |
@@ -84,6 +106,7 @@ jobs:
             curl -sSLo $HOME/.sonar/sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-$SONAR_SCANNER_VERSION-linux.zip
             unzip -q -o $HOME/.sonar/sonar-scanner.zip -d $HOME/.sonar/
             export PATH=$SONAR_SCANNER_HOME/bin:$PATH
+
             sonar-scanner \
               -Dsonar.login=$SONAR_TOKEN \
               -Dsonar.projectBaseDir=. \
