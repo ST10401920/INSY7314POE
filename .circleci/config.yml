@@ -3,7 +3,7 @@ version: 2.1
 jobs:
   build-and-analyze:
     docker:
-      - image: cimg/node:18.18  # Node version to satisfy ESLint plugins
+      - image: cimg/node:18.18  # Node version compatible with ESLint plugins
     steps:
       - checkout
 
@@ -37,14 +37,15 @@ jobs:
           name: Backend npm audit
           command: cd Backend && npm audit --audit-level=high || exit 1
 
-      # Simple API smoke test (mock server) using CommonJS
+      # Simple API smoke test (mock server)
       - run:
           name: Backend API Smoke Test
           command: |
             cd Backend
-            npm install node-fetch@3 jest supertest --save-dev
+            npm install node-fetch@2 jest supertest --save-dev
             mkdir -p scripts tests
-            # Create mock server + Jest test file
+
+            # Create Jest test file with mock server
             echo "const express = require('express');
             const fetch = require('node-fetch');
 
@@ -65,7 +66,7 @@ jobs:
               expect(res.status).toBe(200);
             });" > tests/health.test.js
 
-      # Run Jest tests + coverage
+      # Run Jest tests + collect coverage
       - run:
           name: Backend Jest + Coverage
           command: |
@@ -88,7 +89,7 @@ jobs:
               -Dsonar.projectBaseDir=. \
               -Dsonar.working.directory=.sonar \
               -Dsonar.javascript.lcov.reportPaths=Backend/coverage/lcov.info,Frontend/coverage/lcov.info \
-              -Dsonar.exclusions=Backend/scripts/temp-smoke-test.js,Frontend/scripts/* \
+              -Dsonar.exclusions=Backend/scripts/*,Frontend/scripts/* \
               -Dsonar.verbose=true
 
 workflows:
