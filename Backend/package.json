@@ -25,13 +25,11 @@
     "express": "^4.18.2",
     "node-fetch": "^2.6.12"
   },
-  
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
     "seed": "node auth/seeding.js",
     "test": "jest --coverage"
-    
-  }
-   "type": "module"
+  },
+  "type": "module"
 }
