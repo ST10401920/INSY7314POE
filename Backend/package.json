@@ -32,12 +32,6 @@
     "seed": "node auth/seeding.js",
     "test": "jest --coverage"
     
-  },
-  
-  "jest": {
-  "testEnvironment": "node",
-  "coverageDirectory": "./coverage",
-  "coverageReporters": ["lcov", "text"]
-  },
+  }
    "type": "module"
 }
