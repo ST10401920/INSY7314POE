@@ -16,7 +16,7 @@ jobs:
           name: Install Backend dependencies
           command: cd Backend && npm ci
 
-      # Software Composition Analysis (dependency vulnerabilities)
+      # Software Composition Analysis
       - run:
           name: Frontend npm audit
           command: cd Frontend && npm audit --audit-level=high || exit 1
@@ -32,7 +32,7 @@ jobs:
           name: Lint Backend
           command: cd Backend && npx eslint . --ext .js,.ts --plugin security || true
 
-      # API / Smoke test (using node-fetch@2)
+      # API Smoke test 
       - run:
           name: Backend API smoke test
           command: |
@@ -71,7 +71,7 @@ jobs:
             });
             "
 
-      # SonarQube Scan (Hotspots + Code Smells)
+      # SonarQube Scan 
       - run:
           name: Run SonarCloud Scan
           command: |
