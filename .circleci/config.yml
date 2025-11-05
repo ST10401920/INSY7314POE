@@ -3,117 +3,51 @@ version: 2.1
 jobs:
   build-and-analyze:
     docker:
-      - image: cimg/node:18.18  # Node version compatible with ESLint and dependencies
+      - image: cimg/node:18.18
     steps:
       - checkout
 
       # --------------------------
       # Install dependencies
       # --------------------------
-      - run:
-          name: Install Frontend dependencies
-          command: cd Frontend && npm ci
-      - run:
-          name: Install Backend dependencies
-          command: cd Backend && npm ci
+      - run: cd Frontend && npm ci
+      - run: cd Backend && npm ci
 
       # --------------------------
       # Static Application Security Testing (SAST)
       # --------------------------
-      - run:
-          name: Backend ESLint Security Scan
-          command: |
-            cd Backend
-            npm install --save-dev eslint eslint-plugin-security
-            npx eslint "**/*.js" --plugin security || true
-      - run:
-          name: Frontend ESLint Security Scan
-          command: |
-            cd Frontend
-            npm install --save-dev eslint eslint-plugin-security
-            npx eslint "**/*.js" --plugin security || true
+      - run: cd Backend && npx eslint "**/*.js" --plugin security || true
+      - run: cd Frontend && npx eslint "**/*.js" --plugin security || true
 
       # --------------------------
       # Software Composition Analysis (SCA)
       # --------------------------
-      - run:
-          name: Frontend npm audit
-          command: cd Frontend && npm audit --audit-level=high || exit 1
-      - run:
-          name: Backend npm audit
-          command: cd Backend && npm audit --audit-level=high || exit 1
+      - run: cd Frontend && npm audit --audit-level=high || exit 1
+      - run: cd Backend && npm audit --audit-level=high || exit 1
 
       # --------------------------
-      # Backend Mock Server Smoke Test
+      # Run Jest Tests & Generate Coverage
       # --------------------------
-      - run:
-          name: Backend API Smoke Test
-          command: |
-            cd Backend
-            npm install node-fetch@2 jest supertest --save-dev
-            mkdir -p scripts tests
-
-            # Create Jest test file with mock server
-            echo "const express = require('express');
-            const fetch = require('node-fetch');
-
-            let server;
-
-            beforeAll(() => {
-              const app = express();
-              app.get('/health', (req, res) => res.status(200).send('OK'));
-              server = app.listen(5400);
-            });
-
-            afterAll(() => {
-              server.close();
-            });
-
-            test('Mock server /health endpoint returns 200', async () => {
-              const res = await fetch('http://localhost:5400/health');
-              expect(res.status).toBe(200);
-            });" > tests/health.test.js
+      - run: cd Backend && npx jest --coverage
+      - run: cd Frontend && npx jest --coverage
 
       # --------------------------
-      # Backend + Frontend Jest + Coverage
+      # SonarCloud Scan
       # --------------------------
-      - run:
-          name: Backend Jest + Coverage
-          command: |
-            cd Backend
-            npx jest --coverage
-
-      - run:
-          name: Frontend Jest + Coverage
-          command: |
-            cd Frontend
-            npm install jest --save-dev
-            mkdir -p tests
-            # Minimal frontend test to generate coverage
-            echo "test('sample frontend test', () => { expect(true).toBe(true); });" > tests/sample.test.js
-            npx jest --coverage
-
-      # --------------------------
-      # Run SonarCloud Scan
-      # --------------------------
-      - run:
-          name: Run SonarCloud Scan
-          command: |
-            echo "Downloading and running Sonar Scanner CLI..."
-            export SONAR_SCANNER_VERSION=5.0.1.3006
-            export SONAR_SCANNER_HOME=$HOME/.sonar/sonar-scanner-$SONAR_SCANNER_VERSION-linux
-            mkdir -p $HOME/.sonar
-            curl -sSLo $HOME/.sonar/sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-$SONAR_SCANNER_VERSION-linux.zip
-            unzip -q -o $HOME/.sonar/sonar-scanner.zip -d $HOME/.sonar/
-            export PATH=$SONAR_SCANNER_HOME/bin:$PATH
-
-            sonar-scanner \
-              -Dsonar.login=$SONAR_TOKEN \
-              -Dsonar.projectBaseDir=. \
-              -Dsonar.working.directory=.sonar \
-              -Dsonar.javascript.lcov.reportPaths=Backend/coverage/lcov.info,Frontend/coverage/lcov.info \
-              -Dsonar.exclusions=Backend/scripts/*,Frontend/scripts/* \
-              -Dsonar.verbose=true
+      - run: |
+          export SONAR_SCANNER_VERSION=5.0.1.3006
+          export SONAR_SCANNER_HOME=$HOME/.sonar/sonar-scanner-$SONAR_SCANNER_VERSION-linux
+          mkdir -p $HOME/.sonar
+          curl -sSLo $HOME/.sonar/sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-$SONAR_SCANNER_VERSION-linux.zip
+          unzip -q -o $HOME/.sonar/sonar-scanner.zip -d $HOME/.sonar/
+          export PATH=$SONAR_SCANNER_HOME/bin:$PATH
+          sonar-scanner \
+            -Dsonar.login=$SONAR_TOKEN \
+            -Dsonar.projectBaseDir=. \
+            -Dsonar.working.directory=.sonar \
+            -Dsonar.javascript.lcov.reportPaths=Backend/coverage/lcov.info,Frontend/coverage/lcov.info \
+            -Dsonar.exclusions=Backend/tests/helpers/*,Frontend/tests/helpers/* \
+            -Dsonar.verbose=true
 
 workflows:
   version: 2
