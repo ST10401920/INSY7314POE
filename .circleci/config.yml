@@ -1,81 +1,61 @@
-version: 2.1
+name: DevSecOps Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/*'
 
 jobs:
-  build-and-analyze:
-    docker:
-      - image: cimg/node:18.17
-    working_directory: ~/repo
+  devsecops:
+    name: DevSecOps Pipeline
+    runs-on: ubuntu-latest
     steps:
-      - checkout
+      # 1️⃣ Checkout code
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      # -------------------------
-      # Install dependencies
-      # -------------------------
-      - run:
-          name: Install Frontend dependencies
-          command: cd Frontend && npm ci
-      - run:
-          name: Install Backend dependencies
-          command: cd Backend && npm ci
+      # 2️⃣ Setup Node.js environment
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
 
-      # -------------------------
-      # Software Composition Analysis
-      # -------------------------
-      - run:
-          name: Frontend npm audit
-          command: cd Frontend && npm audit --audit-level=high || exit 1
-      - run:
-          name: Backend npm audit
-          command: cd Backend && npm audit --audit-level=high || exit 1
+      # 3️⃣ Install dependencies
+      - name: Install dependencies
+        run: npm ci
 
-      # -------------------------
-      # Static Code Analysis / ESLint (bypassing peer conflicts)
-      # -------------------------
-      - run:
-          name: Frontend ESLint (optional warnings)
-          command: |
-            cd Frontend
-            npm install --no-save eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin --legacy-peer-deps
-            npx eslint "src/**/*.{js,ts,tsx}" || true
-      - run:
-          name: Backend ESLint (optional warnings)
-          command: |
-            cd Backend
-            npm install --no-save eslint eslint-plugin-security --legacy-peer-deps
-            npx eslint "**/*.js" --plugin security || true
+      # 4️⃣ Static Application Security Testing (SAST)
+      - name: Run ESLint Security Checks
+        run: |
+          npm install eslint eslint-plugin-security --save-dev
+          npx eslint . --ext .js,.ts
 
-      # -------------------------
-      # API / Smoke Test
-      # -------------------------
-      - run:
-          name: Backend API smoke test
-          command: |
-            cd Backend
-            npm install node-fetch@3 --no-save
-            node scripts/smoke-test.js
+      - name: Run NodeJsScan for Static Analysis
+        uses: neutretech/nodejs-scan-action@v1
+        with:
+          args: .
 
-      # -------------------------
-      # SonarQube Scan (Hotspots + Code Smells)
-      # -------------------------
-      - run:
-          name: Run SonarCloud Scan
-          command: |
-            echo "Downloading and running Sonar Scanner CLI..."
-            export SONAR_SCANNER_VERSION=5.0.1.3006
-            export SONAR_SCANNER_HOME=$HOME/.sonar/sonar-scanner-$SONAR_SCANNER_VERSION-linux
-            mkdir -p $HOME/.sonar
-            curl -sSLo $HOME/.sonar/sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-$SONAR_SCANNER_VERSION-linux.zip
-            unzip -q -o $HOME/.sonar/sonar-scanner.zip -d $HOME/.sonar/
-            export PATH=$SONAR_SCANNER_HOME/bin:$PATH
-            sonar-scanner \
-              -Dsonar.login=$SONAR_TOKEN \
-              -Dsonar.projectBaseDir=. \
-              -Dsonar.sources=Frontend,Backend \
-              -Dsonar.working.directory=.sonar \
-              -Dsonar.verbose=true
+      # 5️⃣ Software Composition Analysis (SCA)
+      - name: Run Snyk for Dependency Vulnerabilities
+        uses: snyk/actions/node@v1.0.3
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: test
 
-workflows:
-  version: 2
-  build_and_scan:
-    jobs:
-      - build-and-analyze
+      # 6️⃣ API Security Testing
+      - name: Install API Testing Tools
+        run: npm install -g newman
+
+      - name: Run Postman API Tests
+        run: |
+          newman run ./postman_collection.json \
+          --env-var "BASE_URL=http://localhost:3000"
+
+      # 7️⃣ Optional: Containerize & run additional research tools (e.g., OWASP ZAP)
+      - name: Run OWASP ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.7.0
+        with:
+          target: 'http://localhost:3000'
+          rules_file_name: './zap_rules.yml'
