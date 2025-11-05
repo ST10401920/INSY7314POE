@@ -8,9 +8,7 @@ jobs:
     steps:
       - checkout
 
-      # ----------------------------
       # Install dependencies
-      # ----------------------------
       - run:
           name: Install Frontend dependencies
           command: cd Frontend && npm ci
@@ -18,19 +16,15 @@ jobs:
           name: Install Backend dependencies
           command: cd Backend && npm ci
 
-      # ----------------------------
       # Software Composition Analysis (dependency vulnerabilities)
-      # ----------------------------
       - run:
           name: Frontend npm audit
-          command: cd Frontend && npm audit --audit-level=high || true
+          command: cd Frontend && npm audit --audit-level=high || exit 1
       - run:
           name: Backend npm audit
-          command: cd Backend && npm audit --audit-level=high || true
+          command: cd Backend && npm audit --audit-level=high || exit 1
 
-      # ----------------------------
       # Static code analysis (lint)
-      # ----------------------------
       - run:
           name: Lint Frontend
           command: cd Frontend && npx eslint src --ext .js,.jsx,.ts,.tsx || true
@@ -38,19 +32,16 @@ jobs:
           name: Lint Backend
           command: cd Backend && npx eslint . --ext .js,.ts --plugin security || true
 
-      # ----------------------------
-      # Simple API / Smoke test (mock server)
-      # ----------------------------
+      # API / Smoke test (using node-fetch@2)
       - run:
           name: Backend API smoke test
           command: |
             cd Backend
-            # Use Node-fetch v3 (ESM)
+            npm install node-fetch@2 --no-save
             node -e "
-            import fetch from 'node-fetch';
-            import http from 'http';
+            const fetch = require('node-fetch');
+            const http = require('http');
 
-            // Simple mock server
             const server = http.createServer((req, res) => {
               if (req.url === '/health') {
                 res.writeHead(200, {'Content-Type': 'application/json'});
@@ -60,6 +51,7 @@ jobs:
                 res.end();
               }
             });
+
             server.listen(3000, async () => {
               console.log('Mock server running on port 3000');
               try {
@@ -79,9 +71,7 @@ jobs:
             });
             "
 
-      # ----------------------------
       # SonarQube Scan (Hotspots + Code Smells)
-      # ----------------------------
       - run:
           name: Run SonarCloud Scan
           command: |
