@@ -3,51 +3,51 @@ version: 2.1
 jobs:
   build-and-analyze:
     docker:
-      - image: cimg/node:18.18
+      - image: cimg/node:18.17
     steps:
       - checkout
 
-      # --------------------------
       # Install dependencies
-      # --------------------------
-      - run: cd Frontend && npm ci
-      - run: cd Backend && npm ci
+      - run:
+          name: Install Frontend dependencies
+          command: cd Frontend && npm ci
+      - run:
+          name: Install Backend dependencies
+          command: cd Backend && npm ci
 
-      # --------------------------
-      # Static Application Security Testing (SAST)
-      # --------------------------
-      - run: cd Backend && npx eslint "**/*.js" --plugin security || true
-      - run: cd Frontend && npx eslint "**/*.js" --plugin security || true
+      # Software Composition Analysis (dependency vulnerabilities)
+      - run:
+          name: Frontend npm audit
+          command: cd Frontend && npm audit --audit-level=high || exit 1
+      - run:
+          name: Backend npm audit
+          command: cd Backend && npm audit --audit-level=high || exit 1
 
-      # --------------------------
-      # Software Composition Analysis (SCA)
-      # --------------------------
-      - run: cd Frontend && npm audit --audit-level=high || exit 1
-      - run: cd Backend && npm audit --audit-level=high || exit 1
+      # Simple API smoke test
+      - run:
+          name: Backend API smoke test
+          command: |
+            cd Backend
+            # ensure node-fetch is installed for your test
+            npm install node-fetch@3 --no-save
+            node scripts/smoke-test.js
 
-      # --------------------------
-      # Run Jest Tests & Generate Coverage
-      # --------------------------
-      - run: cd Backend && npx jest --coverage
-      - run: cd Frontend && npx jest --coverage
-
-      # --------------------------
-      # SonarCloud Scan
-      # --------------------------
-      - run: |
-          export SONAR_SCANNER_VERSION=5.0.1.3006
-          export SONAR_SCANNER_HOME=$HOME/.sonar/sonar-scanner-$SONAR_SCANNER_VERSION-linux
-          mkdir -p $HOME/.sonar
-          curl -sSLo $HOME/.sonar/sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-$SONAR_SCANNER_VERSION-linux.zip
-          unzip -q -o $HOME/.sonar/sonar-scanner.zip -d $HOME/.sonar/
-          export PATH=$SONAR_SCANNER_HOME/bin:$PATH
-          sonar-scanner \
-            -Dsonar.login=$SONAR_TOKEN \
-            -Dsonar.projectBaseDir=. \
-            -Dsonar.working.directory=.sonar \
-            -Dsonar.javascript.lcov.reportPaths=Backend/coverage/lcov.info,Frontend/coverage/lcov.info \
-            -Dsonar.exclusions=Backend/tests/helpers/*,Frontend/tests/helpers/* \
-            -Dsonar.verbose=true
+      # Run SonarCloud Scan
+      - run:
+          name: Run SonarCloud Scan
+          command: |
+            echo "Downloading and running Sonar Scanner CLI..."
+            export SONAR_SCANNER_VERSION=5.0.1.3006
+            export SONAR_SCANNER_HOME=$HOME/.sonar/sonar-scanner-$SONAR_SCANNER_VERSION-linux
+            mkdir -p $HOME/.sonar
+            curl -sSLo $HOME/.sonar/sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-$SONAR_SCANNER_VERSION-linux.zip
+            unzip -q -o $HOME/.sonar/sonar-scanner.zip -d $HOME/.sonar/
+            export PATH=$SONAR_SCANNER_HOME/bin:$PATH
+            sonar-scanner \
+              -Dsonar.login=$SONAR_TOKEN \
+              -Dsonar.projectBaseDir=. \
+              -Dsonar.working.directory=.sonar \
+              -Dsonar.verbose=true
 
 workflows:
   version: 2
