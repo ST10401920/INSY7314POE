@@ -4,6 +4,7 @@ jobs:
   build-and-analyze:
     docker:
       - image: cimg/node:18.17
+    working_directory: ~/repo
     steps:
       - checkout
 
@@ -23,16 +24,23 @@ jobs:
           name: Backend npm audit
           command: cd Backend && npm audit --audit-level=high || exit 1
 
-      # Simple API smoke test
+      # Static code analysis (lint)
+      - run:
+          name: Lint Frontend
+          command: cd Frontend && npx eslint src --ext .js,.jsx
+      - run:
+          name: Lint Backend
+          command: cd Backend && npx eslint . --ext .js --plugin security
+
+      # Simple API / Smoke test
       - run:
           name: Backend API smoke test
           command: |
             cd Backend
-            # ensure node-fetch is installed for your test
             npm install node-fetch@3 --no-save
             node scripts/smoke-test.js
 
-      # Run SonarCloud Scan
+      # SonarQube Scan (Hotspots + Code Smells)
       - run:
           name: Run SonarCloud Scan
           command: |
@@ -46,6 +54,7 @@ jobs:
             sonar-scanner \
               -Dsonar.login=$SONAR_TOKEN \
               -Dsonar.projectBaseDir=. \
+              -Dsonar.sources=Frontend,Backend \
               -Dsonar.working.directory=.sonar \
               -Dsonar.verbose=true
 
