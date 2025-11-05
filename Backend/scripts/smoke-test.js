@@ -1,5 +1,5 @@
 // Backend/scripts/smoke-test.js
-import express from "express";
+const express = require("express");
 const app = express();
 app.get("/health", (req, res) => res.sendStatus(200));
 
