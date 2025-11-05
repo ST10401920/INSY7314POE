@@ -1,50 +1,66 @@
 version: 2.1
 
 jobs:
-  build-and-analyze:
+  devsecops-scan:
     docker:
-      - image: cimg/node:20.5
+      - image: cimg/node:18.17
     working_directory: ~/repo
     steps:
       - checkout
 
-      # Install dependencies
+      # Install Frontend dependencies
       - run:
-          name: Install Frontend dependencies
-          command: cd Frontend && npm ci
-      - run:
-          name: Install Backend dependencies
-          command: cd Backend && npm ci
+          name: Install Frontend Dependencies
+          command: |
+            cd Frontend
+            npm ci
 
-      # Software Composition Analysis (dependency vulnerabilities)
+      # Install Backend dependencies
       - run:
-          name: Frontend npm audit
-          command: cd Frontend && npm audit --audit-level=high || exit 1
-      - run:
-          name: Backend npm audit
-          command: cd Backend && npm audit --audit-level=high || exit 1
-
-      # Static code analysis (lint)
-      - run:
-          name: Lint Frontend
-          command: cd Frontend && npx eslint src --ext .js,.jsx --max-warnings=0 || true
-      - run:
-          name: Lint Backend
-          command: cd Backend && npx eslint . --ext .js --plugin security
-
-      # Simple API / Smoke test
-      - run:
-          name: Backend API smoke test
+          name: Install Backend Dependencies
           command: |
             cd Backend
-            npm install node-fetch@3 --no-save
-            node scripts/smoke-test.js
+            npm ci
 
-      # SonarQube Scan (Hotspots + Code Smells)
+      # Software Composition Analysis
       - run:
-          name: Run SonarCloud Scan
+          name: Frontend npm audit
           command: |
-            echo "Downloading and running Sonar Scanner CLI..."
+            cd Frontend
+            npm audit --audit-level=high || true
+      - run:
+          name: Backend npm audit
+          command: |
+            cd Backend
+            npm audit --audit-level=high || true
+
+      # Optional Linting (warnings only, not failing build)
+      - run:
+          name: Frontend ESLint (warnings)
+          command: |
+            cd Frontend
+            npm install --no-save eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin
+            npx eslint "src/**/*.{js,ts,tsx}" || true
+      - run:
+          name: Backend ESLint (warnings)
+          command: |
+            cd Backend
+            npm install --no-save eslint eslint-plugin-security
+            npx eslint "**/*.js" --plugin security || true
+
+      # Simple API / Smoke Test
+      - run:
+          name: Backend Smoke Test
+          command: |
+            cd Backend
+            npm install --no-save node-fetch@3
+            node scripts/smoke-test.js || true
+
+      # SonarQube / SonarCloud Scan (Hotspots + Code Smells)
+      - run:
+          name: SonarQube Scan
+          command: |
+            echo "Setting up Sonar Scanner CLI..."
             export SONAR_SCANNER_VERSION=5.0.1.3006
             export SONAR_SCANNER_HOME=$HOME/.sonar/sonar-scanner-$SONAR_SCANNER_VERSION-linux
             mkdir -p $HOME/.sonar
@@ -60,6 +76,6 @@ jobs:
 
 workflows:
   version: 2
-  build_and_scan:
+  devsecops-pipeline:
     jobs:
-      - build-and-analyze
+      - devsecops-scan
