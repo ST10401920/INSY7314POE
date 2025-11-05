@@ -22,7 +22,9 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
-    "seed": "node auth/seeding.js"
+    "seed": "node auth/seeding.js",
+    "test": "jest --coverage"
+    
   },
    "type": "module"
 }
