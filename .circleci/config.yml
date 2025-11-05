@@ -3,7 +3,7 @@ version: 2.1
 jobs:
   build-and-analyze:
     docker:
-      - image: cimg/node:18.18  # upgraded to remove ESLint EBADENGINE warnings
+      - image: cimg/node:18.18  # Node version to satisfy ESLint plugins
     steps:
       - checkout
 
@@ -39,12 +39,12 @@ jobs:
 
       # Simple API smoke test (mock server)
       - run:
-          name: Backend API smoke test
+          name: Backend API Smoke Test
           command: |
             cd Backend
-            npm install node-fetch@3 nyc --save-dev
-            mkdir -p scripts  # create folder to avoid "No such file or directory"
-            # Create a mock server for smoke test
+            npm install node-fetch@3 --save-dev
+            mkdir -p scripts
+            # Create mock server file
             echo "import express from 'express';
             const app = express();
             app.get('/health', (req,res)=>res.status(200).send('OK'));
@@ -61,8 +61,17 @@ jobs:
                 process.exit(1);
               }
             });" > scripts/temp-smoke-test.js
-            # Run smoke test with coverage
-            npx nyc --reporter=lcov node scripts/temp-smoke-test.js
+            node scripts/temp-smoke-test.js
+
+      # Run Jest tests for coverage (uses mock server for /health)
+      - run:
+          name: Backend Jest + Coverage
+          command: |
+            cd Backend
+            npm install jest supertest --save-dev
+            mkdir -p tests
+            # Run Jest tests (collects coverage for SonarCloud)
+            npx jest --coverage
 
       # Run SonarCloud Scan
       - run:
